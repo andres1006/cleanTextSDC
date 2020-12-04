@@ -1,48 +1,67 @@
 const app = require('./server');
 const http = require('http');
-require('./database');
+//require('./database');
 const axios = require('axios');
 const xlsx = require('node-xlsx');
-
+var rootCas = require('ssl-root-cas/latest').create();
+ 
+rootCas
+  .addFile('/Volumes/ANDRES/Universidad/Practica/Test/my_api/node_modules/ssl-root-cas/pems/globalsign-root-ca-r6.pem')
+  ;
+ 
+// will work with all https requests will all libraries (i.e. request.js)
+require('https').globalAgent.options.ca = rootCas;
+//certificates /Volumes/ANDRES/Universidad/Practica/Test/my_api/node_modules/ssl-root-cas/pems/
+//require('https').globalAgent.options.ca = require('ssl-root-cas/latest').create();
 
 const fs = require('fs');
 /* routes */
 app.use('/api', (req, res) => {
-  readData();
+  readData(req);
   res.json({ message: "Lanzamiento de proceso" })
 });
 
 
 
 const readData = async () => {
- let nameFile = "VentaHogares";
-  var obj = xlsx.parse(fs.readFileSync(`./InData/${nameFile}.xlsx`)); // parses a buffer
+  //const { email , password } = data;
+  //const login = { email , password  }
+      const  loginData = {
+        email: "responsable@tigoune.com",
+        password: "123456"
+      }
 
-  //console.log(obj[0].data);
-  const data = obj[0].data
-  let num = 0;
+      const login = await axios.post('https://smartdatacontact.com/datacall/api/api_auth/login',loginData)
+      console.log(login.data);
 
-  let datacsvNew = [];
-  let columns = {
-    id: 'id',
-    name: 'Name'
-  };
+      const dataGetTranscription = {
+        cmp_id: 19,
+        initial_date: "2020-06-01",
+          final_date: "2020-06-30",
+          code: "Contracting>Failed>NoCoverage"
+      }
+      const config ={
+        headers: {
+          'Authorization': 'Bearer ' + login.data.token
+        }
+      }
 
-  columns.id = "Tipo de tipificación";
+      const transcriptions = await axios.post('https://smartdatacontact.com/datacall/api/api_sdc/practice', dataGetTranscription, config )
 
-  let textCsv = '';
-  for await (const row of data) {
-    if (row[2] && row[2] !== "Llamadas" && row[3] !== "Login PBX") {
-      columns.name = null;
-      //console.log(row[2])
-      //console.log(row[3].split(" ")[0])
-      let idfolderXlsx = row[3].split(" ")[0];
+      let nomTranscription = transcriptions.data.data[0]._source.evg_nombre_grabacion.split('.xml')[0]
+      console.log(nomTranscription);
+
       let params = {
-        idfolder: idfolderXlsx,
-        nameaudio: row[2],
+        idfolder: transcriptions.data.data[0]._source.login_id,
+        nameaudio: nomTranscription,
         idcampana: 19
       }
       let res = await axios.post('http://www.smartdatacontact.com/semantic/public/obtenertexto', params)
+      console.log(res.data.textall);
+      /* for await (const row of data) {
+    if (row[2] && row[2] !== "Llamadas" && row[3] !== "Login PBX") {
+
+      let idfolderXlsx = row[3].split(" ")[0];
       columns.name = res.data;
       textCsv = textCsv + 'informacion, '+ '"'+res.data.textall+'"'+' \n';
       fs.appendFile(`./outData/VentaHogares/VentaHogares/${num++}.txt`, res.data.textall, function (err) {
@@ -65,10 +84,9 @@ const readData = async () => {
     datacsvNew.push(columns);
   })
 
-  console.log(datacsvNew);
+ console.log(datacsvNew); */ 
 
 }
-
 readData();
 
 app.listen(app.get('port'), () => {

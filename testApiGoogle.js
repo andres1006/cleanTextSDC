@@ -9,7 +9,7 @@ const {PredictionServiceClient} = require('@google-cloud/automl').v1;
 const projectId = 'orquestador-287822';
 const location = 'us-central1';
 const modelId = 'TCN2580124980855439360';
-const content = 'Hello, word!'
+const content = 'Hola, como esta'
 
 // Imports the Google Cloud AutoML library
 
